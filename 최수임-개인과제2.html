@@ -1,1 +1,132 @@
+최수임 개인과제2
+choi suim
+2021 9 19
+#####필요한 자료 준비하기
 
+#install.packages(c('tidygraph', 'ggraph'))
+#install.packages("igraph")
+library('tidygraph')
+## 
+## 다음의 패키지를 부착합니다: 'tidygraph'
+## The following object is masked from 'package:stats':
+## 
+##     filter
+library('ggraph')
+## 필요한 패키지를 로딩중입니다: ggplot2
+featuring<-read.csv(file="C:/Users/choes/Desktop/r csv/featuring(1).csv",header=T)
+kovo<-read.csv(file="C:/Users/choes/Desktop/r csv/kovo(1).csv",header=T)
+metro<-read.csv(file="C:/Users/choes/Desktop/r csv/metro(1).csv",header=T)
+subway<-read.csv(file="C:/Users/choes/Desktop/r csv/subway(1).csv",header=T)
+1. Featuring 파일 실습
+library('igraph')
+## 
+## 다음의 패키지를 부착합니다: 'igraph'
+## The following object is masked from 'package:tidygraph':
+## 
+##     groups
+## The following objects are masked from 'package:stats':
+## 
+##     decompose, spectrum
+## The following object is masked from 'package:base':
+## 
+##     union
+str(featuring) #데이터 확인
+## 'data.frame':    12 obs. of  2 variables:
+##  $ from: chr  "아이유" "에픽하이" "에픽하이" "아이유" ...
+##  $ to  : chr  "G-DRAGON" "아이유" "오혁" "오혁" ...
+gfeaturing<-graph.data.frame(featuring,directed=T) #네트워크 그래프로 형식변환, 방향성있는 그래프로 명명
+head(gfeaturing)
+## 6 x 9 sparse Matrix of class "dgCMatrix"
+##               아이유 에픽하이 HIGH4 MINO 사이먼 도미닉 G-DRAGON 오혁 더콰이엇
+## 아이유             .        .     .    .             .        1    1        .
+## 에픽하이           1        .     .    1             1        .    1        1
+## HIGH4              1        .     .    .             .        .    .        .
+## MINO               .        .     .    .             1        .    .        1
+## 사이먼 도미닉      .        .     .    .             .        .    .        1
+## G-DRAGON           .        .     .    .             .        .    .        .
+##               수현
+## 아이유           .
+## 에픽하이         1
+## HIGH4            .
+## MINO             .
+## 사이먼 도미닉    .
+## G-DRAGON         .
+set.seed(50)
+plot(gfeaturing,vertex.size=degree(gfeaturing)*10,
+     vertex.label.dist=0.4,
+     main="피처링 관계") #링크수에 따라 중요도를 파악 = 연결 중심성
+
+
+featuring file의 네트워크 그래프를 확인해볼 때, “에픽하이”의 피처링이 중요함을 알 수 있다.
+featuring 네트워크의 속성
+#centrality compare
+v=V(gfeaturing)
+centrality.gf=data.frame(degree = degree(gfeaturing)/(length(names(v))-1),
+                      between=betweenness(gfeaturing),
+                      close=closeness(gfeaturing,normalized = T))
+## Warning in closeness(gfeaturing, normalized = T): At
+## centrality.c:2784 :closeness centrality is not well-defined for disconnected
+## graphs
+#degree = 해당 노드가 가진 관계
+#between = 노드가 등장하는 ~, 가중치의 개념
+#close = 해당 노드가 다른 노드까지 갈 때 걸리는 최단거리의 척도
+centrality.gf
+##               degree between     close
+## 아이유         0.500       3 0.1428571
+## 에픽하이       0.750       0 0.4705882
+## HIGH4          0.125       0 0.1600000
+## MINO           0.375       0 0.1428571
+## 사이먼 도미닉  0.375       0 0.1250000
+## G-DRAGON       0.125       0 0.1111111
+## 오혁           0.250       0 0.1111111
+## 더콰이엇       0.375       0 0.1111111
+## 수현           0.125       0 0.1111111
+2. subway 파일 실습 : 노선도 그리기
+str(subway) #데이터 확인
+## 'data.frame':    696 obs. of  3 variables:
+##  $ from: chr  "소요산" "동두천" "보산" "동두천중앙" ...
+##  $ to  : chr  "동두천" "보산" "동두천중앙" "지행" ...
+##  $ line: chr  "1" "1" "1" "1" ...
+#ggraph,tidygraph 사용, 노드는 black에 0.5 사이즈로 맞추고 라인별로 링크의  색깔을 달리한다.
+# as_tbl_graph()로 데이터 프레임을 그래프로 변환
+subway %>% as_tbl_graph() %>%
+  ggraph(layout='lgl') + #lgl 레이아웃 사용
+  geom_edge_link(aes(color=line)) + 
+  geom_node_point(color='black', size=0.5)
+
+
+3. metro 파일 실습
+str(metro) #데이터 확인
+## 'data.frame':    311042 obs. of  3 variables:
+##  $ from : chr  "가능" "가능" "가능" "가능" ...
+##  $ to   : chr  "가락시장" "가산디지털단지" "가양" "가재울" ...
+##  $ total: int  103 593 102 1 2 5 14 34 104 35 ...
+head(metro)
+##   from             to total
+## 1 가능       가락시장   103
+## 2 가능 가산디지털단지   593
+## 3 가능           가양   102
+## 4 가능         가재울     1
+## 5 가능           가정     2
+## 6 가능   가정중앙시장     5
+# 데이터를 확인해보면, "total" 열의 값은 환승수, 이동거리, 이동시간과도 맞지않아서, 탑승인원으로 간주했다.
+# 가능역에서 가양역으로 가는 것은 노량진에서 환승을 해야갈 수 있기 때문에 탑승인원수는 가능역에서 타고 노량진에서 갈아타 가양역에서 내린 인원수를 나타낸다고 간주한다.
+metro %>% as_tbl_graph() %>% #metro 데이터의 고유벡터 중심성 계산
+  mutate(cen=centrality_pagerank(weights=total)) %>% #정확한 계산을 위해 인원에 대해 가중치 부여하고 하나의 노드가 중심성이 높게 나올 때 미치는 영향력을 최소화
+  as_tibble %>% #티블
+  arrange(desc(cen)) # 내림차순으로 정렬
+## # A tibble: 578 x 2
+##    name           cen
+##    <chr>        <dbl>
+##  1 강남       0.0136 
+##  2 고속터미널 0.0106 
+##  3 잠실       0.0105 
+##  4 홍대입구   0.0104 
+##  5 서울역     0.00923
+##  6 사당       0.00753
+##  7 신림       0.00722
+##  8 건대입구   0.00711
+##  9 신도림     0.00701
+## 10 선릉       0.00694
+## # ... with 568 more rows
+#강남, 고속터미널, 잠실, 홍대입구역 순서대로 중심성 수치가 높다는 것을 알 수 있다. (=주요역, 사람들이 많이 지나다니는 역)
