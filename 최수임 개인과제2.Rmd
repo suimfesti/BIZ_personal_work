@@ -1,0 +1,73 @@
+---
+title: "최수임 개인과제2"
+author: "choi suim"
+date: '2021 9 19 '
+output: html_document
+---
+
+#####필요한 자료 준비하기
+```{r}
+#install.packages(c('tidygraph', 'ggraph'))
+#install.packages("igraph")
+library('tidygraph')
+library('ggraph')
+featuring<-read.csv(file="C:/Users/choes/Desktop/r csv/featuring(1).csv",header=T)
+kovo<-read.csv(file="C:/Users/choes/Desktop/r csv/kovo(1).csv",header=T)
+metro<-read.csv(file="C:/Users/choes/Desktop/r csv/metro(1).csv",header=T)
+subway<-read.csv(file="C:/Users/choes/Desktop/r csv/subway(1).csv",header=T)
+```
+
+# 1. Featuring 파일 실습
+
+```{r}
+library('igraph')
+str(featuring) #데이터 확인
+gfeaturing<-graph.data.frame(featuring,directed=T) #네트워크 그래프로 형식변환, 방향성있는 그래프로 명명
+head(gfeaturing)
+set.seed(50)
+plot(gfeaturing,vertex.size=degree(gfeaturing)*10,
+     vertex.label.dist=0.4,
+     main="피처링 관계") #링크수에 따라 중요도를 파악 = 연결 중심성
+```
+
+### featuring file의 네트워크 그래프를 확인해볼 때, "에픽하이"의 피처링이 중요함을 알 수 있다.
+
+### featuring 네트워크의 속성
+```{r}
+#centrality compare
+v=V(gfeaturing)
+centrality.gf=data.frame(degree = degree(gfeaturing)/(length(names(v))-1),
+                      between=betweenness(gfeaturing),
+                      close=closeness(gfeaturing,normalized = T))
+#degree = 해당 노드가 가진 관계
+#between = 노드가 등장하는 ~, 가중치의 개념
+#close = 해당 노드가 다른 노드까지 갈 때 걸리는 최단거리의 척도
+centrality.gf
+
+```
+
+# 2. subway 파일 실습 : 노선도 그리기
+```{r}
+str(subway) #데이터 확인
+#ggraph,tidygraph 사용, 노드는 black에 0.5 사이즈로 맞추고 라인별로 링크의  색깔을 달리한다.
+# as_tbl_graph()로 데이터 프레임을 그래프로 변환
+subway %>% as_tbl_graph() %>%
+  ggraph(layout='lgl') + #lgl 레이아웃 사용
+  geom_edge_link(aes(color=line)) + 
+  geom_node_point(color='black', size=0.5)
+```
+
+# 3. metro 파일 실습
+```{r}
+str(metro) #데이터 확인
+head(metro)
+# 데이터를 확인해보면, "total" 열의 값은 환승수, 이동거리, 이동시간과도 맞지않아서, 탑승인원으로 간주했다.
+# 가능역에서 가양역으로 가는 것은 노량진에서 환승을 해야갈 수 있기 때문에 탑승인원수는 가능역에서 타고 노량진에서 갈아타 가양역에서 내린 인원수를 나타낸다고 간주한다.
+metro %>% as_tbl_graph() %>% #metro 데이터의 고유벡터 중심성 계산
+  mutate(cen=centrality_pagerank(weights=total)) %>% #정확한 계산을 위해 인원에 대해 가중치 부여하고 하나의 노드가 중심성이 높게 나올 때 미치는 영향력을 최소화
+  as_tibble %>% #티블
+  arrange(desc(cen)) # 내림차순으로 정렬
+```
+```{r}
+#강남, 고속터미널, 잠실, 홍대입구역 순서대로 중심성 수치가 높다는 것을 알 수 있다. (=주요역, 사람들이 많이 지나다니는 역)
+```
